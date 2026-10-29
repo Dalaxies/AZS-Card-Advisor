@@ -436,7 +436,13 @@ end
 -----------------------------------------------------------------
 local function UpdateVisibility()
 	if not panel then return end
+
+	-- AZS_RUN.ph is the raw field; AZS_GetPhase() is the helper. Use whichever
+	-- is available (AZS_RUN may be populated before AZS_GetPhase works).
 	local ph = AZS_GetPhase and AZS_GetPhase()
+	if not ph and AZS_RUN then
+		ph = AZS_RUN.ph
+	end
 
 	-- Reset look-for checklist when a new run begins, if enabled
 	if ph == "playing" and lastPhase ~= "playing" then
