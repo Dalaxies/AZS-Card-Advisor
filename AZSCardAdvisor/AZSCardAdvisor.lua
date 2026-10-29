@@ -557,13 +557,13 @@ local function CreatePanel()
 	local resetToggleTxt = resetToggleBtn:CreateFontString(nil, "OVERLAY", "GameFontNormal")
 	resetToggleTxt:SetPoint("CENTER", resetToggleBtn, "CENTER", 0, 0)
 
-	local function UpdateResetToggleText()
+	panel.UpdateResetToggleText = function()
 		local on = db.resetOnRunStart ~= false
 		resetToggleTxt:SetText(on and "Reset list at run start: ON" or "Reset list at run start: OFF")
 	end
 	resetToggleBtn:SetScript("OnClick", function()
 		db.resetOnRunStart = not db.resetOnRunStart
-		UpdateResetToggleText()
+		panel.UpdateResetToggleText()
 	end)
 	panel.resetToggleTxt = resetToggleTxt
 
@@ -619,7 +619,7 @@ f:SetScript("OnEvent", function()
 			panel.lockTxt:SetText(locked and ("Class: " .. class .. " [LOCKED]") or "Class: unlocked")
 		end
 		if panel.resetToggleTxt then
-			UpdateResetToggleText()
+			panel.UpdateResetToggleText()
 		end
 	end
 end)
@@ -643,6 +643,6 @@ f:SetScript("OnUpdate", function()
 
 	-- Keep reset toggle text in sync
 	if panel and panel.resetToggleTxt then
-		UpdateResetToggleText()
+		panel.UpdateResetToggleText()
 	end
 end)
