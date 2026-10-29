@@ -454,11 +454,11 @@ local function UpdateVisibility()
 	lastPhase = ph
 
 	-- Show panel when the level-up picker is active.
-	-- The phase string reports "playing" (or "choosing") while cards are on
-	-- screen, but AZS_RUN.owed > 0 is the most reliable signal that choices
-	-- are actually being offered.
+	-- Use both signals: phase string ("playing"/"choosing") and AZS_RUN.owed > 0.
+	-- Either one being true is enough to show the panel, since we're not sure
+	-- which signal the game sets first during the picker transition.
 	local owed = AZS_RUN and AZS_RUN.owed or 0
-	if AZS_RUN and owed > 0 and (ph == "playing" or ph == "choosing") then
+	if (ph == "playing" or ph == "choosing") or owed > 0 then
 		panel:Show()
 	else
 		panel:Hide()
