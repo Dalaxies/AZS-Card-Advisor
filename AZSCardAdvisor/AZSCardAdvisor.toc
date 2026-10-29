@@ -1,0 +1,5 @@
+## Interface: 11200
+## Title: AZS Card Advisor
+## Notes: Predicts level-up card value from visible run data. Cannot see actual dealt cards.
+## Author: Addon Author
+AZSCardAdvisor.lua
