@@ -395,6 +395,7 @@ end
 local function RefreshContent()
 	if not panel then return end
 	local content = panel.content
+	if not content then return end
 
 	if not AZS_RUN or (AZS_RUN.owed or 0) <= 0 then
 		content:Hide()
@@ -507,7 +508,7 @@ local function CreatePanel()
 	})
 	panel:SetBackdropColor(0.1, 0.1, 0.1, 0.9)
 
-	local title = panel:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
+	local title = panel:CreateFontString(nil, "OVERLAY", "GameFontNormal")
 	title:SetPoint("TOP", panel, "TOP", 0, -12)
 	title:SetText("AZS Card Advisor")
 
@@ -566,7 +567,7 @@ local function CreatePanel()
 	end)
 	panel.resetToggleTxt = resetToggleTxt
 
-	local note = panel:CreateFontString(nil, "OVERLAY", "GameFontSmall")
+	local note = panel:CreateFontString(nil, "OVERLAY", "GameFontNormal")
 	note:SetPoint("TOPLEFT", panel, "TOPLEFT", 10, -60)
 	note:SetPoint("TOPRIGHT", panel, "TOPRIGHT", -10, -60)
 	note:SetJustifyH("CENTER")
