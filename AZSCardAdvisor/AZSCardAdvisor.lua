@@ -397,7 +397,10 @@ local function RefreshContent()
 	local content = panel.content
 	if not content then return end
 
-	if not AZS_RUN or (AZS_RUN.owed or 0) <= 0 then
+	-- Only populate content when the panel is visible (cards being offered).
+	-- Visibility is controlled by UpdateVisibility(); if we're showing,
+	-- there are cards to advise on.
+	if not panel:IsShown() then
 		content:Hide()
 		return
 	end
