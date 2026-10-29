@@ -299,6 +299,123 @@ local function RenderGearValue(parent, y)
 	return y
 end
 
+-- Item / Jewelry Advisor: evaluate which stats are most valuable for your build.
+-- Uses stat leverage from card-system.md: damage/haste = 1.0 for all spells,
+-- area/cnt depend on spell kind, crit/echo depend on your crit/echo stats.
+-- Value = gear stat × leverage. Since we can't see individual items, we show
+-- which stats your build values most — look for jewelry that boosts those stats.
+local ITEM_STATS = {
+	{key = "gdmg", name = "Damage",   baseLeverage = 1.0, note = "1.0 on every spell"},
+	{key = "gcd",  name = "Haste",    baseLeverage = 1.0, note = "1.0 on every spell"},
+	{key = "gcrit", name = "Crit",    baseLeverage = 0.5, note = "scales with crit dmg multiplier"},
+	{key = "garea", name = "Area",    baseLeverage = 0.0, note = "helps AoE / cone / ground spells"},
+	{key = "gcnt",  name = "Targets", baseLeverage = 0.0, note = "helps multi-target spells"},
+	{key = "garm",  name = "Armor",   baseLeverage = 0.0, note = "damage reduction (60% max)"},
+	{key = "greg",  name = "Regen",   baseLeverage = 0.0, note = "health per second"},
+	{key = "gspd",  name = "Speed",   baseLeverage = 0.0, note = "movement speed"},
+	{key = "ghp",   name = "Max HP",  baseLeverage = 0.0, note = "survivability"},
+}
+
+-- Rough spell-kind classification from key name for leverage calc.
+local function SpellKind(key)
+	local k = string.lower(key)
+	if string.find(k, "nova", 1, true) or string.find(k, "explosion", 1, true) or
+	   string.find(k, "blizzard", 1, true) or string.find(k, "flamestrike", 1, true) or
+	   string.find(k, "cone", 1, true) or string.find(k, "wave", 1, true) or
+	   string.find(k, "nova", 1, true) or string.find(k, "totem", 1, true) or
+	   string.find(k, "nova", 1, true) then
+		return "AoE"
+	end
+	if string.find(k, "shot", 1, true) or string.find(k, "bolt", 1, true) or
+	   string.find(k, "strike", 1, true) or string.find(k, "blast", 1, true) or
+	   string.find(k, "missile", 1, true) then
+		return "SingleTarget"
+	end
+	return "Other"
+end
+
+local function RenderItemAdvisor(parent, y)
+	local stats = AZS_STATS or {}
+	local spells = AZS_SPELLS or {}
+	local meterLines = AZS_GetMeter() or {}
+
+	-- Build meter share by spell key (fuzzy match)
+	local spellShares = {}
+	for i = 1, table.getn(spells) do
+		local s = spells[i]
+		if s.key and not (i == table.getn(spells)) then -- skip racial
+			spellShares[s.key] = GetSpellMeterShare(s.key)
+		end
+	end
+
+	-- Total meter share for weighting
+	local totalShare = 0
+	for _, sh in pairs(spellShares) do
+		totalShare = totalShare + sh
+	end
+
+	y = AddHeader(parent, "Item / Jewelry Advisor", y)
+	y = AddLine(parent, "  Value = gear stat × leverage for your build:", false, y)
+
+	-- Damage and haste are always 1.0 leverage
+	local dmgVal = (stats.gdmg or 0) * 1.0
+	local hasteVal = (stats.gcd or 0) * 1.0
+
+	-- Area leverage: only if you have AoE spells with meter share
+	local aoeShare = 0
+	local stShare = 0
+	for key, sh in pairs(spellShares) do
+		local kind = SpellKind(key)
+		if kind == "AoE" then
+			aoeShare = aoeShare + sh
+		else
+			stShare = stShare + sh
+		end
+	end
+
+	local areaLeverage = 0
+	if totalShare > 0 then
+		areaLeverage = aoeShare / totalShare -- fraction of damage from AoE spells
+	end
+
+	local areaVal = (stats.garea or 0) * areaLeverage
+	local cntVal = (stats.gcnt or 0) * areaLeverage -- targets leverage similar to area for multi-target
+
+	-- Crit leverage: rough estimate based on crit stat
+	local crit = stats.crit or 0
+	local cm = stats.cm or 1.0
+	local critLeverage = 0
+	if crit > 0 then
+		critLeverage = crit * (cm - 1) / (1 + crit * (cm - 1))
+	end
+	local critVal = (stats.gcrit or 0) * critLeverage
+
+	-- Build value list
+	local values = {
+		{key = "gdmg", name = "Damage", val = dmgVal, note = "1.0 × your damage stat"},
+		{key = "gcd",  name = "Haste",  val = hasteVal, note = "1.0 × your haste stat"},
+		{key = "garea", name = "Area",  val = areaVal, note = string.format("%.0f%% of dmg from AoE", areaLeverage * 100)},
+		{key = "gcnt",  name = "Targets", val = cntVal, note = "multi-target spell fraction"},
+		{key = "gcrit", name = "Crit",  val = critVal, note = string.format("crit %.0f%% × cm %.1f", crit * 100, cm)},
+		{key = "garm",  name = "Armor", val = (stats.garm or 0) * 0.5, note = "damage reduction"},
+		{key = "greg",  name = "Regen", val = (stats.greg or 0) * 0.3, note = "health per second"},
+		{key = "gspd",  name = "Speed", val = (stats.gspd or 0) * 0.2, note = "movement speed"},
+		{key = "ghp",   name = "Max HP",val = (stats.ghp or 0) * 0.2, note = "survivability"},
+	}
+
+	table.sort(values, function(a, b) return a.val > b.val end)
+
+	for i = 1, table.getn(values) do
+		local v = values[i]
+		local invested = (stats[v.key] or 0) > 0
+		y = AddLine(parent, string.format("  %s: value %.2f  %s",
+			v.name, v.val, v.note), false, y, invested and nil or {1, 0.5, 0})
+	end
+
+	y = AddLine(parent, "  Look for jewelry that boosts your highest-value stats.", false, y)
+	return y
+end
+
 local function RenderDamageTaken(parent, y)
 	local taken = AZS_TAKEN or {}
 	y = AddHeader(parent, "Damage Taken (by source)", y)
@@ -422,6 +539,8 @@ local function RefreshContent()
 	y = RenderPassiveAdvisor(content, y)
 	y = AddLine(content, "", false, y) -- spacer
 	y = RenderGearValue(content, y)
+	y = AddLine(content, "", false, y) -- spacer
+	y = RenderItemAdvisor(content, y)
 	y = AddLine(content, "", false, y) -- spacer
 	y = RenderDamageTaken(content, y)
 	y = AddLine(content, "", false, y) -- spacer
