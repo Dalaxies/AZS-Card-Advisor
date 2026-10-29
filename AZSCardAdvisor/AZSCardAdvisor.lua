@@ -102,8 +102,15 @@ local function GetSpellMeterShare(key)
 end
 
 local function PredictRankUpGain(key, rank)
-	if not rank or rank >= 8 then return 0 end
-	return GetSpellMeterShare(key) * 0.398
+	if not rank or rank >= 8 then return 0, false end
+	local share = GetSpellMeterShare(key)
+	if share > 0 then
+		return share * 0.398, true
+	end
+	-- No meter data: use the spell's power ranking as a rough estimate.
+	local class = (AZS_ZONE and AZS_ZONE.class) or "warrior"
+	local power = (CLASS_POWER[class] and CLASS_POWER[class][key]) or 0
+	return power * 0.01, false
 end
 
 -----------------------------------------------------------------
@@ -164,8 +171,8 @@ local function RenderCardAdvisor(parent, y)
 		local s = spells[i]
 		if s.key and s.rank and s.rank < 8 then
 			if not (i == numSpells) then -- skip racial
-				local gain = PredictRankUpGain(s.key, s.rank)
-				table.insert(rankups, {key = s.key, rank = s.rank, gain = gain})
+				local gain, hasMeter = PredictRankUpGain(s.key, s.rank)
+				table.insert(rankups, {key = s.key, rank = s.rank, gain = gain, hasMeter = hasMeter})
 			end
 		end
 	end
@@ -184,8 +191,9 @@ local function RenderCardAdvisor(parent, y)
 		for i = 1, table.getn(rankups) do
 			local r = rankups[i]
 			local pct = string.format("%.0f%%", r.gain * 100)
-			y = AddLine(parent, string.format("    %s (rank %d) ~ +%s DPS",
-				r.key, r.rank, pct), (r.key == bestRankupKey), y)
+			local src = r.hasMeter and "(meter)" or "(est.)"
+			y = AddLine(parent, string.format("    %s (rank %d) ~ +%s DPS %s",
+				r.key, r.rank, pct, src), (r.key == bestRankupKey), y)
 		end
 	end
 
