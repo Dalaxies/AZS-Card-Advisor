@@ -463,6 +463,7 @@ local function UpdateVisibility()
 	local owed = AZS_RUN and AZS_RUN.owed or 0
 	if (ph == "playing" or ph == "choosing") or owed > 0 then
 		panel:Show()
+		panel:Raise() -- bring to front above level-up overlay
 	else
 		panel:Hide()
 	end
@@ -507,6 +508,8 @@ local function CreatePanel()
 	panel = CreateFrame("Frame", "AZSCardAdvisorPanel", UIParent)
 	panel:SetWidth(360)
 	panel:SetHeight(560)
+	panel:SetFrameStrata("DIALOG") -- above stock HUD and level-up overlay
+	panel:SetToplevel(true)
 	panel:SetMovable(true)
 	panel:EnableMouse(true)
 	panel:SetScript("OnMouseDown", function() this:StartMoving() end)
